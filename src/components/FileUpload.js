@@ -8,6 +8,8 @@ const FileUpload = () => {
     const [loading, setLoading] = useState(false);
     const [newTrades, setNewTrades] = useState([]);
     const [trades, setTrades] = useState([]);
+    const [timestamp, setTimestamp] = useState('');
+    const [balances, setBalances] = useState({});
 
     const handleFileChange = (e) => {
         setFile(e.target.files[0]);
@@ -46,6 +48,29 @@ const FileUpload = () => {
             console.error('Error:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleTimestampChange = (e) => {
+        setTimestamp(e.target.value);
+    };
+
+    const handleCalculateBalances = async (e) => {
+        e.preventDefault();
+        setError('');
+        setBalances({});
+
+        if (!timestamp) {
+            setError('Please enter a timestamp.');
+            return;
+        }
+
+        try {
+            const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/balance`, { timestamp });
+            setBalances(response.data);
+        } catch (err) {
+            setError('Error calculating balances. Please try again.');
+            console.error('Error:', err);
         }
     };
 
@@ -106,7 +131,7 @@ const FileUpload = () => {
             {error && <div className="mb-4 text-red-500">{error}</div>}
             {message && <div className="mb-4 text-green-500">{message}</div>}
             {trades.length > 0 && (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto mb-4">
                     <table className="table-auto w-full">
                         <thead>
                             <tr>
@@ -121,13 +146,12 @@ const FileUpload = () => {
                         <tbody>
                             {trades.map((trade, index) => {
                                 const { base_coin, quote_coin } = trade; // Ensure these fields match the backend response
-                                const { baseCoin, quoteCoin } = parseMarket(`${base_coin}/${quote_coin}`);
                                 return (
                                     <tr key={index}>
                                         <td className="border px-4 py-2">{new Date(trade.utc_time).toLocaleString()}</td>
                                         <td className="border px-4 py-2">{trade.operation}</td>
-                                        <td className="border px-4 py-2">{baseCoin}</td>
-                                        <td className="border px-4 py-2">{quoteCoin}</td>
+                                        <td className="border px-4 py-2">{base_coin}</td>
+                                        <td className="border px-4 py-2">{quote_coin}</td>
                                         <td className="border px-4 py-2">{trade.amount}</td>
                                         <td className="border px-4 py-2">{trade.price}</td>
                                     </tr>
@@ -135,6 +159,37 @@ const FileUpload = () => {
                             })}
                         </tbody>
                     </table>
+                </div>
+            )}
+
+            <form onSubmit={handleCalculateBalances} className="mb-4">
+                <div className="flex items-center space-x-4 mb-2">
+                    <label className="text-gray-700">Enter Timestamp (YYYY-MM-DD HH:mm:ss):</label>
+                    <input
+                        type="text"
+                        value={timestamp}
+                        onChange={handleTimestampChange}
+                        className="py-2 px-3 border border-gray-300 rounded"
+                        placeholder="YYYY-MM-DD HH:mm:ss"
+                    />
+                    <button
+                        type="submit"
+                        className="px-4 py-2 bg-green-500 text-white rounded"
+                    >
+                        Calculate Balances
+                    </button>
+                </div>
+            </form>
+            {Object.keys(balances).length > 0 && (
+                <div>
+                    <h2 className="text-xl font-bold mb-2">Calculated Balances</h2>
+                    <ul>
+                        {Object.entries(balances).map(([coin, balance]) => (
+                            <li key={coin} className="mb-1">
+                                {coin}: {balance}
+                            </li>
+                        ))}
+                    </ul>
                 </div>
             )}
         </div>
